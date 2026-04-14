@@ -57,7 +57,9 @@ def main():
     arrays = manifest_store._group.arrays
     print(f"\nVariables found: {list(arrays.keys())}")
     for name, array in arrays.items():
-        print(f"  {name}: shape={array.shape}, dtype={array.dtype}, chunks={array.chunks}")
+        print(
+            f"  {name}: shape={array.shape}, dtype={array.dtype}, chunks={array.chunks}"
+        )
 
     # Save manifest and metadata
     print(f"\nSaving manifest to {output_file}...")

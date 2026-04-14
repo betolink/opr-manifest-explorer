@@ -92,10 +92,9 @@ def main():
     all_vars = set().union(*var_sets.values())
     common_vars = set.intersection(*var_sets.values())
     if all_vars != common_vars:
-        print(f"\nVariable sets DIFFER:")
+        print("\nVariable sets DIFFER:")
         for name, vs in var_sets.items():
             extra = vs - common_vars
-            missing = common_vars - vs  # relative to intersection
             notes = []
             if extra:
                 notes.append(f"extra: {extra}")
@@ -104,10 +103,12 @@ def main():
             if notes:
                 print(f"  {name}: {', '.join(notes)}")
     else:
-        print(f"\nVariable sets: CONSISTENT ({len(common_vars)} variables in all files)")
+        print(
+            f"\nVariable sets: CONSISTENT ({len(common_vars)} variables in all files)"
+        )
 
     # Per-variable comparison
-    print(f"\nPer-variable details:")
+    print("\nPer-variable details:")
     for var in sorted(common_vars):
         shapes = {name: info[var]["shape"] for name, info in successful}
         dtypes = {name: info[var]["dtype"] for name, info in successful}
@@ -116,14 +117,10 @@ def main():
         unique_dtypes = set(dtypes.values())
         unique_chunks = set(str(c) for c in chunks.values())
 
-        # Check if shapes vary only in expected dimension (slow_time)
-        shape_list = list(shapes.values())
-        shape_dims = len(shape_list[0])
-
         print(f"\n  {var}:")
         print(f"    dtype: {unique_dtypes}")
         print(f"    chunks: {unique_chunks}")
-        print(f"    shapes:")
+        print("    shapes:")
         for name, shape in shapes.items():
             print(f"      {name}: {shape}")
 
