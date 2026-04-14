@@ -11,7 +11,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-04-07T04:11:26Z"
+exclude-newer = "2026-04-07T04:51:45Z"
 
 [[package]]
 name = "aiohappyeyeballs"
@@ -1709,8 +1709,8 @@ hdf = [
 
 [[package]]
 name = "vzviz"
-version = "0.1.dev14+ga5b4e66aa"
-source = { git = "https://github.com/virtual-zarr/vzviz#a5b4e66aa8c98dad482f3e0c62770d70fe50d907" }
+version = "0.1.dev18+g1a051e2ed"
+source = { git = "https://github.com/virtual-zarr/vzviz#1a051e2edb868bbc428732ee3e27447e39987c9a" }
 dependencies = [
     { name = "bokeh" },
     { name = "holoviews" },
@@ -1721,6 +1721,7 @@ dependencies = [
     { name = "param" },
     { name = "ujson" },
     { name = "virtualizarr" },
+    { name = "xarray" },
 ]
 
 [[package]]
