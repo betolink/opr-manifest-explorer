@@ -1226,6 +1226,15 @@ wheels = [
 ]
 
 [[package]]
+name = "iniconfig"
+version = "2.3.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/72/34/14ca021ce8e5dfedc35312d08ba8bf51fdd999c576889fc2c24cb97f4f10/iniconfig-2.3.0.tar.gz", hash = "sha256:c76315c77db068650d49c5b56314774a7804df16fee4402c1f19d6d15d8c4730", size = 20503, upload-time = "2025-10-18T21:55:43.219Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/cb/b1/3846dd7f199d53cb17f49cba7e651e9ce294d8497c8c150530ed11865bb8/iniconfig-2.3.0-py3-none-any.whl", hash = "sha256:f631c04d2c48c52b84d0d0549c99ff3859c98df65b3101406327ecc7d53fbf12", size = 7484, upload-time = "2025-10-18T21:55:41.639Z" },
+]
+
+[[package]]
 name = "ipykernel"
 version = "7.2.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1589,6 +1598,22 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/d6/2c/90153f189e421e93c4bb4f9e3f59802a1f01abd2ac5cf40b152d7f735232/jupyterlab_server-2.28.0.tar.gz", hash = "sha256:35baa81898b15f93573e2deca50d11ac0ae407ebb688299d3a5213265033712c", size = 76996, upload-time = "2025-10-22T13:59:18.37Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e0/07/a000fe835f76b7e1143242ab1122e6362ef1c03f23f83a045c38859c2ae0/jupyterlab_server-2.28.0-py3-none-any.whl", hash = "sha256:e4355b148fdcf34d312bbbc80f22467d6d20460e8b8736bf235577dd18506968", size = 59830, upload-time = "2025-10-22T13:59:16.767Z" },
+]
+
+[[package]]
+name = "kerchunk"
+version = "0.2.10"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "fsspec" },
+    { name = "numcodecs" },
+    { name = "numpy" },
+    { name = "ujson" },
+    { name = "zarr" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/5c/a0/ebeca522912e68f360117404a6b2f740d4b0a343d98e9586377a2fd21567/kerchunk-0.2.10.tar.gz", hash = "sha256:aae63c0fe4ca2e97025f026578a0577545011fe6679751392c815e0d1d6bf954", size = 716526, upload-time = "2026-03-30T13:49:05.303Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/64/e4/3c356a9ea448a48caa5e44cd51293f7e896cd606f2ef86da96f5d61cc427/kerchunk-0.2.10-py3-none-any.whl", hash = "sha256:7fdaa77dae25c75d3ec9402c49208f37ae51d346ab082724e3e32608438f8c66", size = 68490, upload-time = "2026-03-30T13:49:03.855Z" },
 ]
 
 [[package]]
@@ -2647,6 +2672,15 @@ wheels = [
 ]
 
 [[package]]
+name = "pluggy"
+version = "1.6.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f9/e2/3e91f31a7d2b083fe6ef3fa267035b518369d9511ffab804f839851d2779/pluggy-1.6.0.tar.gz", hash = "sha256:7dcc130b76258d33b90f61b658791dede3486c3e6bfb003ee5c9bfb396dd22f3", size = 69412, upload-time = "2025-05-15T12:30:07.975Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/54/20/4d324d65cc6d9205fabedc306948156824eb9f0ee1633355a8f7ec5c66bf/pluggy-1.6.0-py3-none-any.whl", hash = "sha256:e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746", size = 20538, upload-time = "2025-05-15T12:30:06.134Z" },
+]
+
+[[package]]
 name = "pqdm"
 version = "0.2.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2845,12 +2879,48 @@ wheels = [
 ]
 
 [[package]]
+name = "pyhdf"
+version = "0.11.6"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b8/7b/ce37450155a25fe6edebb6aa7a4e3d928833ae88db73de4e47071973e836/pyhdf-0.11.6.tar.gz", hash = "sha256:9f6de3dd0a9651581e11e9a20f33ba16f4c79fb316c76082060ab33aeef98c5a", size = 150021, upload-time = "2025-01-05T04:02:36.913Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c5/98/5292994d56d09ebf2b539abf172bbe874f145af1c4a95597ec3e0a492a2b/pyhdf-0.11.6-cp311-cp311-macosx_14_0_arm64.whl", hash = "sha256:293d3fd3a4db332b756370cfb1fe6d2a10f07a6fd75bcb389ae56ff3ceec8fdb", size = 535106, upload-time = "2025-01-05T04:03:50.322Z" },
+    { url = "https://files.pythonhosted.org/packages/82/ad/c187ba2204f016a1f26a39533662520539d160b32c4214a724e20ff57769/pyhdf-0.11.6-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:4f6f622343c5a91d6cebf560c96d1d8ba4a0d89f52aa08251af38e868db2e583", size = 780327, upload-time = "2025-01-05T04:03:52.761Z" },
+    { url = "https://files.pythonhosted.org/packages/2c/53/dbce3370aca05d1d17b14c9bc3b6311ccb434b2e2695f5f7bc04cbf7c5b2/pyhdf-0.11.6-cp311-cp311-win_amd64.whl", hash = "sha256:d88e2988ca63164bec7690b437795d1e8e49b1816289859202c4edd9cd721ba6", size = 188140, upload-time = "2025-01-05T04:03:55.091Z" },
+    { url = "https://files.pythonhosted.org/packages/2e/ac/6dec1412b0fe5b441c242e9d1216adfec331f4b56bf46c095979b5dc4c4b/pyhdf-0.11.6-cp312-cp312-macosx_14_0_arm64.whl", hash = "sha256:053142ed95142cf946d66281e8c864d2197a32ef0d15927098dd42a7c578fafa", size = 533888, upload-time = "2025-01-05T04:03:57.337Z" },
+    { url = "https://files.pythonhosted.org/packages/98/c7/2f4622b8b24585eab712aaa8d515e81673164ce5ffc2e99772fbc50d42dc/pyhdf-0.11.6-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:4ae014b96a5cab50226a8ee69f06275a37e9f0b3641694e34737196f593254c6", size = 780339, upload-time = "2025-01-05T04:04:00.116Z" },
+    { url = "https://files.pythonhosted.org/packages/1f/c4/69f0d35e789be4b0bc18ccfcaa3c59de9cf2ac3713cadb76bc93caf2f9b9/pyhdf-0.11.6-cp312-cp312-win_amd64.whl", hash = "sha256:39265924b78d43bef273ab512139a8ff5459991b8f7729563177e45b51b64a28", size = 188656, upload-time = "2025-01-05T04:04:02.457Z" },
+    { url = "https://files.pythonhosted.org/packages/51/fe/96a539be4a88cd4fbab3c30c8f0a89c0af69c4348ab3183bc586da498ee3/pyhdf-0.11.6-cp313-cp313-macosx_14_0_arm64.whl", hash = "sha256:5f681a6c50ce8d452d7cca0d41f24f7706ced85e0651a12d71051ebd2261af16", size = 533896, upload-time = "2025-01-05T04:04:06.556Z" },
+    { url = "https://files.pythonhosted.org/packages/09/de/7a274c2dcbfc7a1c8d65f0d1e5bda2829fdaf509f39e97463348661bab93/pyhdf-0.11.6-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:b068905a11a095444cea19b128c23cbb0e5935a4a3bde764a2288b59ec0eb4a5", size = 780316, upload-time = "2025-01-05T04:04:07.914Z" },
+    { url = "https://files.pythonhosted.org/packages/4b/ac/0849725e532eb4cc3578afce74685d0f0c8b8fe65cf18b688c7240cec54e/pyhdf-0.11.6-cp313-cp313-win_amd64.whl", hash = "sha256:2cce1f316ecc22472661a73470b4a7c92ce19ad17dbf58eed0615eecf6c8827d", size = 188666, upload-time = "2025-01-05T04:04:09.201Z" },
+]
+
+[[package]]
 name = "pyparsing"
 version = "3.3.2"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/f3/91/9c6ee907786a473bf81c5f53cf703ba0957b23ab84c264080fb5a450416f/pyparsing-3.3.2.tar.gz", hash = "sha256:c777f4d763f140633dcb6d8a3eda953bf7a214dc4eff598413c070bcdc117cbc", size = 6851574, upload-time = "2026-01-21T03:57:59.36Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/10/bd/c038d7cc38edc1aa5bf91ab8068b63d4308c66c4c8bb3cbba7dfbc049f9c/pyparsing-3.3.2-py3-none-any.whl", hash = "sha256:850ba148bd908d7e2411587e247a1e4f0327839c40e2e5e6d05a007ecc69911d", size = 122781, upload-time = "2026-01-21T03:57:55.912Z" },
+]
+
+[[package]]
+name = "pytest"
+version = "9.0.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "colorama", marker = "sys_platform == 'win32'" },
+    { name = "iniconfig" },
+    { name = "packaging" },
+    { name = "pluggy" },
+    { name = "pygments" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/7d/0d/549bd94f1a0a402dc8cf64563a117c0f3765662e2e668477624baeec44d5/pytest-9.0.3.tar.gz", hash = "sha256:b86ada508af81d19edeb213c681b1d48246c1a91d304c6c81a427674c17eb91c", size = 1572165, upload-time = "2026-04-07T17:16:18.027Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d4/24/a372aaf5c9b7208e7112038812994107bc65a84cd00e0354a88c2c77a617/pytest-9.0.3-py3-none-any.whl", hash = "sha256:2c5efc453d45394fdd706ade797c0a81091eccd1d6e4bccfcd476e2b8e0ab5d9", size = 375249, upload-time = "2026-04-07T17:16:16.13Z" },
 ]
 
 [[package]]
@@ -3793,10 +3863,12 @@ dependencies = [
     { name = "holoviews" },
     { name = "hvplot" },
     { name = "jupyterlab" },
+    { name = "kerchunk" },
     { name = "matplotlib" },
     { name = "obspec-utils" },
     { name = "pandas" },
     { name = "panel" },
+    { name = "pyhdf" },
     { name = "requests" },
     { name = "ujson" },
     { name = "virtualizarr", extra = ["hdf"] },
@@ -3807,6 +3879,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "pytest" },
     { name = "ujson" },
 ]
 
@@ -3823,10 +3896,12 @@ requires-dist = [
     { name = "holoviews", specifier = ">=1.18" },
     { name = "hvplot", specifier = ">=0.12.2" },
     { name = "jupyterlab", specifier = ">=4.5.6" },
+    { name = "kerchunk", specifier = ">=0.2.10" },
     { name = "matplotlib", specifier = ">=3.10.8" },
     { name = "obspec-utils", git = "https://github.com/developmentseed/obspec-utils" },
     { name = "pandas", specifier = ">=3.0.2" },
     { name = "panel", specifier = ">=1.0" },
+    { name = "pyhdf", specifier = ">=0.11.6" },
     { name = "requests", specifier = ">=2.32.0" },
     { name = "ujson" },
     { name = "virtualizarr", extras = ["hdf"] },
@@ -3836,7 +3911,10 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-dev = [{ name = "ujson" }]
+dev = [
+    { name = "pytest", specifier = ">=9.0.3" },
+    { name = "ujson" },
+]
 
 [[package]]
 name = "xyzservices"

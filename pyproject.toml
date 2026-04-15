@@ -27,9 +27,12 @@ dependencies = [
     "h5py>=3.16.0",
     "pandas>=3.0.2",
     "requests>=2.32.0",
+    "pyhdf>=0.11.6",
+    "kerchunk>=0.2.10",
 ]
 
 [dependency-groups]
 dev = [
+    "pytest>=9.0.3",
     "ujson",
 ]

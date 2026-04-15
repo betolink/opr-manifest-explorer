@@ -20,6 +20,7 @@ import requests
 
 import h5py
 import json
+import numpy as np
 import pandas as pd
 import panel as pn
 import virtualizarr as vz
@@ -181,13 +182,284 @@ def scan_groups(file_path):
                     )
 
         f.visititems(visitor)
+
+        root_ds = [k for k in f if isinstance(f[k], h5py.Dataset)]
+        if root_ds:
+            rows.append(
+                {
+                    "group": "/",
+                    "n_vars": len(root_ds),
+                    "variables": ", ".join(root_ds),
+                }
+            )
     return pd.DataFrame(rows)
+
+
+def _fix_hdf5_references(input_path, output_path, group_path):
+    """Create a patched HDF5 file with Reference fillvalues fixed.
+
+    Some HDF5 files (especially MATLAB v7.3 .mat) have datasets with
+    h5py.h5r.Reference as fillvalue, which virtualizarr can't handle.
+    This function creates a copy with those datasets removed or fixed.
+
+    Returns:
+        list of problematic variable names that were removed
+    """
+    import h5py
+    import shutil
+    import numpy as np
+
+    # Find problematic variables first
+    problematic = []
+    with h5py.File(input_path, "r") as src:
+        group_obj = src[group_path] if group_path != "/" else src
+
+        def find_refs(name, obj):
+            if isinstance(obj, h5py.Dataset):
+                try:
+                    fv = obj.fillvalue
+                    if isinstance(fv, h5py.h5r.Reference):
+                        problematic.append(name)
+                except Exception:
+                    pass
+
+        group_obj.visititems(find_refs)
+
+    if not problematic:
+        shutil.copy(input_path, output_path)
+        return problematic
+
+    # Copy file, then delete problematic datasets
+    shutil.copy(input_path, output_path)
+
+    with h5py.File(output_path, "r+") as dst:
+        group_obj = dst[group_path] if group_path != "/" else dst
+        for name in problematic:
+            if name in group_obj:
+                del group_obj[name]
+
+    return problematic
+
+
+def _clean_hdf5_attributes(input_path, output_path, group_path):
+    """Create a patched HDF5 file with non-serializable attributes removed.
+
+    Some HDF5 files (especially MATLAB v7.3 .mat) have attributes with
+    numpy byte arrays that can't be JSON serialized. This function creates
+    a copy with those attributes removed or converted.
+
+    Returns:
+        list of attribute keys that were removed/cleaned
+    """
+    import h5py
+    import shutil
+    import numpy as np
+
+    cleaned = []
+
+    with h5py.File(input_path, "r") as src:
+        group_obj = src[group_path] if group_path != "/" else src
+        attrs = dict(group_obj.attrs)
+
+    # Check which attributes are problematic
+    problematic_keys = []
+    for key, value in attrs.items():
+        try:
+            import ujson
+
+            ujson.dumps(value)
+        except (TypeError, OverflowError):
+            problematic_keys.append(key)
+
+    if not problematic_keys:
+        shutil.copy(input_path, output_path)
+        return cleaned
+
+    # Copy file and clean attributes
+    shutil.copy(input_path, output_path)
+
+    with h5py.File(output_path, "r+") as dst:
+        group_obj = dst[group_path] if group_path != "/" else dst
+        for key in problematic_keys:
+            original_value = attrs[key]
+            cleaned.append(key)
+
+            # Try to convert byte strings to regular strings
+            if isinstance(original_value, np.bytes_):
+                try:
+                    group_obj.attrs[key] = original_value.decode("utf-8")
+                except:
+                    del group_obj.attrs[key]
+            elif isinstance(original_value, np.ndarray):
+                # Try to convert byte arrays
+                try:
+                    if original_value.dtype.kind == "S":
+                        group_obj.attrs[key] = original_value.astype(str).tolist()
+                    else:
+                        del group_obj.attrs[key]
+                except:
+                    del group_obj.attrs[key]
+            else:
+                # Delete the attribute
+                try:
+                    del group_obj.attrs[key]
+                except:
+                    pass
+
+    return cleaned
 
 
 def make_manifest(file_path, group):
     p = Path(file_path).resolve()
-    registry = ObjectStoreRegistry({"file://": _FileStore(str(p.parent))})
-    return vz.parsers.HDFParser(group=group)(f"file://{p}", registry=registry)
+
+    # Pre-check for Reference fillvalues in .mat files
+    patched_path = None
+    removed_vars = []
+
+    if p.suffix.lower() == ".mat":
+        with h5py.File(p, "r") as f:
+            group_obj = f[group] if group != "/" else f
+
+            def find_refs(name, obj):
+                if isinstance(obj, h5py.Dataset):
+                    try:
+                        fv = obj.fillvalue
+                        if isinstance(fv, h5py.h5r.Reference):
+                            removed_vars.append(name)
+                    except Exception:
+                        pass
+
+            group_obj.visititems(find_refs)
+
+        if removed_vars:
+            # Create patched HDF5 file
+            patched_path = Path(_tmpdir) / f"{p.stem}_patched.h5"
+            removed_vars = _fix_hdf5_references(p, patched_path, group)
+
+    # Check for non-serializable attributes in .mat files
+    cleaned_attrs = []
+    if p.suffix.lower() == ".mat":
+        # Create a second patched file with cleaned attributes for JSON export
+        clean_attrs_path = Path(_tmpdir) / f"{p.stem}_clean_attrs.h5"
+        cleaned_attrs = _clean_hdf5_attributes(p, clean_attrs_path, group)
+
+        # Use the cleaned file for JSON export
+        json_export_path = clean_attrs_path if cleaned_attrs else None
+    else:
+        json_export_path = None
+
+    # Set up registry based on whether we have a patched file
+    if patched_path:
+        registry = ObjectStoreRegistry(
+            {"file://": _FileStore(str(patched_path.parent))}
+        )
+        file_path = patched_path
+    else:
+        registry = ObjectStoreRegistry({"file://": _FileStore(str(p.parent))})
+
+    drop_variables = None
+    if p.suffix.lower() == ".mat":
+        drop_variables = [
+            "#refs#",
+            "#subsystem#",
+            "param_array",
+            "param_records",
+            "param_sar",
+            "file_type",
+            "file_version",
+            "radiometric_corr_dB",
+        ] + removed_vars
+
+    try:
+        manifest = vz.parsers.HDFParser(group=group, drop_variables=drop_variables)(
+            f"file://{Path(file_path).resolve()}", registry=registry
+        )
+        return manifest, removed_vars, json_export_path, cleaned_attrs
+    except AttributeError as e:
+        if "'h5py.h5r.Reference' object has no attribute 'item'" in str(e):
+            raise RuntimeError(
+                f"Failed to handle Reference fillvalues. Removed vars: {removed_vars}"
+            ) from e
+        raise
+
+
+def hdf4_to_hdf5(hdf4_path, hdf5_path):
+    """Convert HDF4 file to intermediate HDF5.
+
+    Args:
+        hdf4_path: Path to the HDF4 file
+        hdf5_path: Path for the output HDF5 file
+
+    Returns:
+        Path to the converted HDF5 file
+    """
+    from pyhdf.HDF import HDF
+    from pyhdf.SD import SD
+
+    h4 = SD(str(hdf4_path))
+
+    with h5py.File(str(hdf5_path), "w") as h5:
+        for name in h4.datasets():
+            sds = h4.select(name)
+            data = sds[:]
+            h5.create_dataset(name, data=data)
+
+            for attr in sds.attributes():
+                try:
+                    h5[name].attrs[attr] = sds.getattr(attr)
+                except Exception:
+                    pass
+
+        for attr in h4.attributes():
+            try:
+                h5.attrs[attr] = h4.getattr(attr)
+            except Exception:
+                pass
+
+    h4.end()
+    return hdf5_path
+
+
+def is_hdf4(path):
+    """Check if a file is HDF4 format."""
+    try:
+        from pyhdf.HDF import HDF, HC
+
+        h = HDF(str(path), HC.READ)
+        h.close()
+        return True
+    except Exception:
+        return False
+
+
+def make_manifest_from_hdf4(hdf4_path, output_path=None):
+    """Generate kerchunk manifest from HDF4 file using kerchunk HDF4ToZarr.
+
+    Args:
+        hdf4_path: Path to the HDF4 file
+        output_path: Optional path to save the manifest JSON
+
+    Returns:
+        The kerchunk manifest dict
+    """
+    from kerchunk.hdf4 import HDF4ToZarr
+    import json
+
+    h = HDF4ToZarr(str(hdf4_path))
+    result = h.translate()
+
+    if output_path:
+
+        class BytesEncoder(json.JSONEncoder):
+            def default(self, obj):
+                if isinstance(obj, bytes):
+                    return {"__bytes__": True, "data": obj.hex()}
+                return super().default(obj)
+
+        with open(output_path, "w") as f:
+            json.dump(result, f, cls=BytesEncoder)
+
+    return result
 
 
 def _build_report(manifest_store, source_file, group_path):
@@ -300,6 +572,17 @@ def create_app():
                     return
                 current_file[0] = str(p)
                 status.object = f"Scanning `{p.name}`..."
+
+                if is_hdf4(p):
+                    status.object = (
+                        f"Generating kerchunk manifest for HDF4 file `{p.name}`..."
+                    )
+                    manifest_path = Path(_tmpdir) / f"{p.stem}_manifest.json"
+                    manifest = make_manifest_from_hdf4(p, manifest_path)
+                    current_file[0] = str(manifest_path)
+                    status.object = (
+                        "HDF4 manifest generated. Select group to visualize."
+                    )
             elif url_str:
                 suffix = Path(url_str.split("/")[-1].split("?")[0]).suffix or ".h5"
                 tmp = Path(_tmpdir) / f"downloaded{suffix}"
@@ -364,19 +647,49 @@ def create_app():
             src_name = Path(current_file[0]).stem
             status.object = f"Generating manifest for `{group_path}`..."
 
-            manifest = make_manifest(current_file[0], group_path)
+            manifest, removed_vars, json_export_path, cleaned_attrs = make_manifest(
+                current_file[0], group_path
+            )
             dashboard = vzviz.manifest_dashboard(manifest)
 
-            # Save kerchunk manifest JSON
+            # Save kerchunk manifest JSON - try with cleaned attributes file first
             manifest_json_path = (
                 Path(_tmpdir)
                 / f"{src_name}_{group_path.replace('/', '_')}_manifest.json"
             )
-            vzviz.save_manifest_to_json(
-                manifest,
-                manifest_json_path,
-                metadata={"source": current_file[0], "group": group_path},
-            )
+            try:
+                # If we have a cleaned attributes file, generate new manifest from it
+                if json_export_path and json_export_path.exists():
+                    # Create new manifest from cleaned file
+                    clean_registry = ObjectStoreRegistry(
+                        {"file://": _FileStore(str(json_export_path.parent))}
+                    )
+                    clean_manifest = vz.parsers.HDFParser(group=group_path)(
+                        f"file://{json_export_path}", registry=clean_registry
+                    )
+
+                    vzviz.save_manifest_to_json(
+                        clean_manifest,
+                        manifest_json_path,
+                        metadata={
+                            "source": current_file[0],
+                            "group": group_path,
+                            "skipped_variables": removed_vars,
+                            "cleaned_attributes": cleaned_attrs,
+                        },
+                    )
+                else:
+                    vzviz.save_manifest_to_json(
+                        manifest,
+                        manifest_json_path,
+                        metadata={
+                            "source": current_file[0],
+                            "group": group_path,
+                            "skipped_variables": removed_vars,
+                        },
+                    )
+            except (TypeError, AttributeError) as e:
+                manifest_json_path = None
 
             # Build chunk stats report
             report = _build_report(manifest, current_file[0], group_path)
@@ -386,12 +699,25 @@ def create_app():
             with open(report_json_path, "w") as f:
                 json.dump(report, f, indent=2, default=str)
 
-            dl_manifest_btn = pn.widgets.FileDownload(
-                file=str(manifest_json_path),
-                label="Download Kerchunk Manifest",
-                filename=manifest_json_path.name,
-                button_type="primary",
-            )
+            # Create download buttons (skip manifest if not saved)
+            manifest_saved = manifest_json_path and manifest_json_path.exists()
+            if manifest_saved:
+                dl_manifest_btn = pn.widgets.FileDownload(
+                    file=str(manifest_json_path),
+                    label="Download Kerchunk Manifest",
+                    filename=manifest_json_path.name,
+                    button_type="primary",
+                )
+            elif json_export_path and json_export_path.exists():
+                dl_manifest_btn = pn.widgets.FileDownload(
+                    file=str(json_export_path),
+                    label="Download Cleaned HDF5 (for kerchunk)",
+                    filename=json_export_path.name,
+                    button_type="primary",
+                )
+            else:
+                dl_manifest_btn = pn.pane.Markdown("*Manifest JSON not available*")
+
             dl_report_btn = pn.widgets.FileDownload(
                 file=str(report_json_path),
                 label="Download Chunk Report",
@@ -400,9 +726,26 @@ def create_app():
             )
 
             viz_area.clear()
-            viz_area.append(
-                pn.Row(dl_manifest_btn, dl_report_btn),
-            )
+            viz_area.append(pn.Row(dl_manifest_btn, dl_report_btn))
+
+            if removed_vars:
+                viz_area.append(
+                    pn.pane.Markdown(
+                        f"⚠️ **Skipped {len(removed_vars)} variables** (unsupported fill values):\n"
+                        + ", ".join(removed_vars),
+                        sizing_mode="stretch_width",
+                    )
+                )
+
+            if cleaned_attrs:
+                viz_area.append(
+                    pn.pane.Markdown(
+                        f"ℹ️ **Cleaned {len(cleaned_attrs)} attributes** (non-serializable):\n"
+                        + ", ".join(cleaned_attrs),
+                        sizing_mode="stretch_width",
+                    )
+                )
+
             viz_area.append(
                 pn.pane.Markdown(
                     "**Dashboard columns:**\n"
@@ -416,8 +759,31 @@ def create_app():
             )
             viz_area.append(dashboard)
             progress.bar_color = "success"
-            status.object = f"Ready for `{group_path}`"
-        except Exception:
+            if removed_vars:
+                status.object = (
+                    f"Ready for `{group_path}` (skipped {len(removed_vars)} variables)"
+                )
+            else:
+                status.object = f"Ready for `{group_path}`"
+        except (AttributeError, TypeError) as e:
+            if "'h5py.h5r.Reference' object has no attribute 'item'" in str(e):
+                progress.bar_color = "warning"
+                status.object = (
+                    f"Error: Some datasets in this file have unsupported fill values (HDF5 references). "
+                    f"This is a known issue with MATLAB v7.3 files in virtualizarr. "
+                    f"The group was loaded but some variables may not display correctly.\n\n"
+                    f"Details: {str(e)[:200]}..."
+                )
+            elif "not JSON serializable" in str(e):
+                progress.bar_color = "warning"
+                status.object = (
+                    f"Error: Some HDF5 attributes contain non-serializable data (byte strings). "
+                    f"The manifest was generated but some metadata may be missing.\n\n"
+                    f"Details: {str(e)[:200]}..."
+                )
+            else:
+                raise
+        except Exception as e:
             progress.bar_color = "danger"
             status.object = f"Error:\n```\n{traceback.format_exc()}\n```"
         finally:
