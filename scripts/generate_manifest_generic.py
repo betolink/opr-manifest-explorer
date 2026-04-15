@@ -235,10 +235,14 @@ class ManifestGenerator:
         self,
         drop_variables: Optional[List[str]] = None,
         base_url: Optional[str] = None,
+        group: Optional[str] = None,
     ):
         self.drop_variables = drop_variables or []
         self.base_url = base_url
-        self.parser = vz.parsers.HDFParser(drop_variables=self.drop_variables)
+        self.group = group
+        self.parser = vz.parsers.HDFParser(
+            group=self.group, drop_variables=self.drop_variables
+        )
         self.errors: List[Tuple[str, str]] = []
 
     def generate_from_url(
@@ -385,6 +389,70 @@ class ManifestGenerator:
         return metadata
 
     @staticmethod
+    def dry_run(file_path: str) -> None:
+        """Print groups and variables in an HDF5 file without writing output."""
+        import h5py
+
+        def _print_group(group: h5py.Group, prefix: str = ""):
+            items = sorted(
+                group.items(), key=lambda x: (not isinstance(x[1], h5py.Group), x[0])
+            )
+            for i, (name, obj) in enumerate(items):
+                last = i == len(items) - 1
+                connector = "└── " if last else "├── "
+                if isinstance(obj, h5py.Group):
+                    ds_count = sum(1 for k in obj if isinstance(obj[k], h5py.Dataset))
+                    sub_count = sum(1 for k in obj if isinstance(obj[k], h5py.Group))
+                    label = name + "/"
+                    if ds_count:
+                        label += f"  ({ds_count} vars"
+                        if sub_count:
+                            label += f", {sub_count} subgroups"
+                        label += ")"
+                    elif sub_count:
+                        label += f"  ({sub_count} subgroups)"
+                    print(f"{prefix}{connector}{label}")
+                    extension = "    " if last else "│   "
+                    _print_group(obj, prefix + extension)
+                else:
+                    print(
+                        f"{prefix}{connector}{name}: shape={obj.shape}, dtype={obj.dtype}"
+                    )
+
+        with h5py.File(file_path, "r") as f:
+            root_items = sorted(
+                f.items(), key=lambda x: (not isinstance(x[1], h5py.Group), x[0])
+            )
+            for name, obj in root_items:
+                if isinstance(obj, h5py.Group):
+                    ds_count = sum(1 for k in obj if isinstance(obj[k], h5py.Dataset))
+                    sub_count = sum(1 for k in obj if isinstance(obj[k], h5py.Group))
+                    label = f"/{name}"
+                    if ds_count:
+                        label += f"  ({ds_count} vars"
+                        if sub_count:
+                            label += f", {sub_count} subgroups"
+                        label += ")"
+                    elif sub_count:
+                        label += f"  ({sub_count} subgroups)"
+                    print(label)
+                    _print_group(obj, "")
+                else:
+                    print(f"/{name}: shape={obj.shape}, dtype={obj.dtype}")
+
+            print("\n--- Suggested --group values ---")
+            suggested = []
+
+            def _collect(name, obj):
+                if isinstance(obj, h5py.Group):
+                    if any(isinstance(obj[k], h5py.Dataset) for k in obj):
+                        suggested.append(name)
+
+            f.visititems(_collect)
+            for s in sorted(suggested):
+                print(f"  --group=/{s}")
+
+    @staticmethod
     def _extract_base_url(url: str) -> str:
         """Extract base URL from full path."""
         from urllib.parse import urlparse
@@ -427,6 +495,17 @@ def main():
         default="*",
         help="File pattern to match when processing directories (default: *)",
     )
+    parser.add_argument(
+        "--group",
+        "-g",
+        default=None,
+        help="HDF5 group path to open (e.g. /gt1l/freeboard_segment). Use --dry-run to discover groups.",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="List groups and variables in the file without generating a manifest.",
+    )
 
     args = parser.parse_args()
 
@@ -448,7 +527,18 @@ def main():
     elif args.drop:
         drop_variables = args.drop
 
-    generator = ManifestGenerator(drop_variables=drop_variables)
+    generator = ManifestGenerator(drop_variables=drop_variables, group=args.group)
+
+    if args.dry_run:
+        if input_path.startswith(("http://", "https://")):
+            print("--dry-run is not supported for URLs")
+            sys.exit(1)
+        path = Path(input_path)
+        if not path.is_file():
+            print(f"--dry-run requires a single file, got: {input_path}")
+            sys.exit(1)
+        ManifestGenerator.dry_run(str(path))
+        sys.exit(0)
 
     if input_path.startswith(("http://", "https://")):
         print(f"Generating manifest from URL: {input_path}")

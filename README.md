@@ -1,8 +1,8 @@
-# XOPR Manifest Explorer
+# Manifest Explorer
 
-Interactive visualization of VirtualiZarr chunk manifests for [Open Polar Radar](https://openradar.earth) (OPR) data.
+Interactive visualization of VirtualiZarr chunk manifests for any HDF5 file (HDF5, MATLAB v7.3 `.mat`, NetCDF4, ICESat-2, etc.).
 
-This dashboard displays the HDF5 structure of CReSIS ice-penetrating radar `.mat` files without downloading them, using pre-generated manifest metadata.
+This dashboard displays the internal structure of HDF5 files without downloading them, using pre-generated manifest metadata.
 
 ## Features
 
@@ -17,48 +17,67 @@ This dashboard displays the HDF5 structure of CReSIS ice-penetrating radar `.mat
 # Install dependencies
 uv sync
 
-# Run the app
+# Run with a specific manifest
+uv run python app.py path/to/manifest.json
+
+# Or via panel serve with an env var
+MANIFEST_PATH=path/to/manifest.json uv run panel serve app.py --show
+
+# Or via URL query param
 uv run panel serve app.py --show
+# then open http://localhost:5006/app?manifest=path/to/manifest.json
 ```
 
-## Regenerating the Manifest
+If no manifest is specified, falls back to `data/xopr_manifest.json`.
 
-### Generic Manifest Generator
+## Generating Manifests
 
-Generate manifests from **any HDF5 file** (HDF5, MATLAB v7.3 .mat, NetCDF4, etc.) with automatic exception handling:
+### 1. Discover the file structure
 
 ```bash
-# From a generic HDF5 file
+uv run scripts/generate_manifest_generic.py /path/to/file.h5 ./data --dry-run
+```
+
+This prints the full group/variable tree and suggests valid `--group` paths.
+
+### 2. Generate a manifest
+
+```bash
+# Entire root group
 uv run scripts/generate_manifest_generic.py /path/to/file.h5 ./data
 
-# From a MATLAB .mat file (with preset)
+# A specific HDF5 group
+uv run scripts/generate_manifest_generic.py /path/to/file.h5 ./data --group=/gt1l/freeboard_segment
+
+# MATLAB .mat file
 uv run scripts/generate_manifest_generic.py /path/to/file.mat ./data --matlab
 
-# From a directory (processes all files matching pattern)
+# From a directory
 uv run scripts/generate_manifest_generic.py /path/to/directory ./data --pattern "*.h5"
 
 # From a URL
 uv run scripts/generate_manifest_generic.py https://example.com/file.h5 ./data
+
+# Drop specific variables
+uv run scripts/generate_manifest_generic.py /path/to/file.h5 ./data --drop var1 --drop var2
 ```
 
-The generic script automatically collects and reports parsing exceptions for variables that cannot be virtualized, allowing manifest generation to continue even when some variables fail.
-
 **Options:**
+- `--dry-run`: List groups and variables without writing output
+- `--group, -g`: HDF5 group path to virtualize (e.g. `/gt1l/freeboard_segment`)
 - `--drop, -d`: Drop specific variables (can be used multiple times)
-- `--matlab, -m`: Use MATLAB v7.3 HDF5 preset (drops #refs#, #subsystem#, param_*, etc.)
-- `--pattern, -p`: File pattern to match when processing directories (default: *)
+- `--matlab, -m`: Use MATLAB v7.3 HDF5 preset
+- `--pattern, -p`: File pattern for directory mode (default: `*`)
 
 See [MANIFEST_GENERATOR_USAGE.md](MANIFEST_GENERATOR_USAGE.md) for complete documentation.
 
 ### Legacy Script
 
-The original `scripts/generate_manifest.py` script generates a manifest from a hardcoded CReSIS `.mat` file (no authentication required):
+The original `scripts/generate_manifest.py` generates a manifest from a hardcoded CReSIS `.mat` file:
 
 ```bash
 uv run scripts/generate_manifest.py
 ```
-
-The default target is a single frame from the `2022_Antarctica_BaslerMKB` collection (`CSARP_standard` product).
 
 ## Findings
 
@@ -66,4 +85,4 @@ See [FINDINGS.md](FINDINGS.md) for observations about MATLAB v7.3 HDF5 compatibi
 
 ## About
 
-Built with [vzviz](https://github.com/virtual-zarr/vzviz) and [VirtualiZarr](https://github.com/zarr-developers/VirtualiZarr). Part of the [XOPR](https://github.com/englacial/xopr) ecosystem.
+Built with [vzviz](https://github.com/virtual-zarr/vzviz) and [VirtualiZarr](https://github.com/zarr-developers/VirtualiZarr).
