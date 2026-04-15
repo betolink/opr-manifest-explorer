@@ -1,0 +1,11 @@
+{
+  "Voila": {
+    "template": "voila-material",
+    "theme": "dark"
+  },
+  "Panel": {
+    "extension": {
+      "tabulator": true
+    }
+  }
+}

@@ -4,8 +4,13 @@ Interactive visualization of VirtualiZarr chunk manifests for any HDF5 file (HDF
 
 This dashboard displays the internal structure of HDF5 files without downloading them, using pre-generated manifest metadata.
 
+## Quick Start - Try in Browser
+
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/betolink/opr-manifest-explorer/voila-widget?urlpath=voila%2Frender%2Fexplorer.ipynb)
+
 ## Features
 
+- **Interactive Workflow**: Upload files or use URLs, browse groups, visualize chunks in one place
 - **Variables Overview**: Browse all variables with their shapes, chunk sizes, and storage info
 - **ByteMap**: Visualize how chunks are laid out in the source file(s)
 - **ChunkMap**: See the chunk grid structure for selected variables
@@ -17,7 +22,10 @@ This dashboard displays the internal structure of HDF5 files without downloading
 # Install dependencies
 uv sync
 
-# Run with a specific manifest
+# Run the Voila web app (auto-generates manifests from any HDF5 file)
+uv run voila explorer.ipynb
+
+# Or run the standalone Panel app with a specific manifest
 uv run python app.py path/to/manifest.json
 
 # Or via panel serve with an env var
