@@ -261,6 +261,10 @@ def create_app():
     current_file = [None]
 
     def on_load(event):
+        print(
+            f"DEBUG: on_load called! file_path_input.value={file_path_input.value}, url_input.value={url_input.value}",
+            flush=True,
+        )
         try:
             progress.active = True
             progress.bar_color = "primary"
