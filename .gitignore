@@ -1,4 +1,6 @@
 data/*.json
+data/*.h5
+data/*.nc
 !data/.gitkeep
 # Byte-compiled / optimized / DLL files
 __pycache__/

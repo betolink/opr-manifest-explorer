@@ -29,7 +29,10 @@ Examples:
 """
 
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Sequence
+from collections.abc import AsyncIterator, Iterator
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
 import json
 import traceback
 
@@ -37,8 +40,177 @@ import virtualizarr as vz
 import virtualizarr.manifests as vzm
 import vzviz
 
+from obspec import GetResult, GetResultAsync, ObjectMeta
 from obspec_utils.registry import ObjectStoreRegistry
 from obspec_utils.stores import AiohttpStore
+from obspec_utils.protocols import ReadableStore
+
+
+@dataclass
+class FileStoreGetResult(GetResult):
+    _data: bytes
+    _meta: ObjectMeta
+    _attributes: Dict = field(default_factory=dict)
+    _range: Tuple[int, int] = (0, 0)
+
+    def __post_init__(self):
+        if self._range == (0, 0):
+            self._range = (0, len(self._data))
+
+    @property
+    def attributes(self) -> Dict:
+        return self._attributes
+
+    def buffer(self) -> bytes:
+        return self._data
+
+    @property
+    def meta(self) -> ObjectMeta:
+        return self._meta
+
+    @property
+    def range(self) -> Tuple[int, int]:
+        return self._range
+
+    def __iter__(self) -> Iterator[bytes]:
+        yield self._data
+
+
+@dataclass
+class FileStoreGetResultAsync(GetResultAsync):
+    _data: bytes
+    _meta: ObjectMeta
+    _attributes: Dict = field(default_factory=dict)
+    _range: Tuple[int, int] = (0, 0)
+
+    def __post_init__(self):
+        if self._range == (0, 0):
+            self._range = (0, len(self._data))
+
+    @property
+    def attributes(self) -> Dict:
+        return self._attributes
+
+    async def buffer_async(self) -> bytes:
+        return self._data
+
+    @property
+    def meta(self) -> ObjectMeta:
+        return self._meta
+
+    @property
+    def range(self) -> Tuple[int, int]:
+        return self._range
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        yield self._data
+
+
+class FileStore(ReadableStore):
+    def __init__(self, base_path: str):
+        self.base_path = Path(base_path.replace("file://", "")).resolve()
+
+    def _resolve_path(self, path: str) -> Path:
+        path = path.replace("file://", "")
+        p = Path(path)
+        if p.is_absolute():
+            return p.resolve()
+        # Registry may have stripped leading / from path
+        if str(path).startswith(str(self.base_path).lstrip("/")):
+            return Path(f"/{path}").resolve()
+        return (self.base_path / path).resolve()
+
+    def get(self, path: str, *, options=None) -> FileStoreGetResult:
+        full_path = self._resolve_path(path)
+        stat = full_path.stat()
+        meta = {
+            "path": path,
+            "last_modified": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc),
+            "size": stat.st_size,
+            "e_tag": None,
+            "version": None,
+        }
+        return FileStoreGetResult(_data=full_path.read_bytes(), _meta=meta)
+
+    async def get_async(self, path: str, *, options=None) -> FileStoreGetResultAsync:
+        result = self.get(path, options=options)
+        return FileStoreGetResultAsync(
+            _data=result._data,
+            _meta=result._meta,
+            _attributes=result._attributes,
+            _range=result._range,
+        )
+
+    def get_range(
+        self,
+        path: str,
+        *,
+        start: int,
+        end: Optional[int] = None,
+        length: Optional[int] = None,
+    ) -> bytes:
+        if end is None and length is None:
+            raise ValueError("Either 'end' or 'length' must be provided")
+        if end is None:
+            end = start + length
+        full_path = self._resolve_path(path)
+        with open(full_path, "rb") as f:
+            f.seek(start)
+            return f.read(end - start)
+
+    async def get_range_async(
+        self,
+        path: str,
+        *,
+        start: int,
+        end: Optional[int] = None,
+        length: Optional[int] = None,
+    ) -> bytes:
+        return self.get_range(path, start=start, end=end, length=length)
+
+    def get_ranges(
+        self,
+        path: str,
+        *,
+        starts: Sequence[int],
+        ends: Optional[Sequence[int]] = None,
+        lengths: Optional[Sequence[int]] = None,
+    ) -> Sequence[bytes]:
+        if ends is None and lengths is None:
+            raise ValueError("Either 'ends' or 'lengths' must be provided")
+        if ends is None:
+            ends = [s + ln for s, ln in zip(starts, lengths)]
+        return [self.get_range(path, start=s, end=e) for s, e in zip(starts, ends)]
+
+    async def get_ranges_async(
+        self,
+        path: str,
+        *,
+        starts: Sequence[int],
+        ends: Optional[Sequence[int]] = None,
+        lengths: Optional[Sequence[int]] = None,
+    ) -> Sequence[bytes]:
+        return self.get_ranges(path, starts=starts, ends=ends, lengths=lengths)
+
+    def head(self, path: str) -> ObjectMeta:
+        full_path = self._resolve_path(path)
+        stat = full_path.stat()
+        return {
+            "path": path,
+            "last_modified": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc),
+            "size": stat.st_size,
+            "e_tag": None,
+            "version": None,
+        }
+
+    async def head_async(self, path: str) -> ObjectMeta:
+        return self.head(path)
+
+    async def head_async(self, path: str) -> ObjectMeta:
+        return self._get_meta(path)
+
+    async def head_async(self, path: str) -> ObjectMeta:
+        return self._get_meta(path)
 
 
 class ManifestGenerationError(Exception):
@@ -76,8 +248,8 @@ class ManifestGenerator:
         metadata: Optional[Dict] = None,
     ) -> vzm.ManifestStore:
         """Generate manifest from a single URL with error collection."""
-        registry = self._create_registry(url)
-        manifest_store, errors = self._parse_with_error_collection(url, registry)
+        registry, file_url = self._create_registry(url)
+        manifest_store, errors = self._parse_with_error_collection(file_url, registry)
 
         if errors:
             error_msg = "\n".join([f"  - {var}: {err}" for var, err in errors])
@@ -117,8 +289,9 @@ class ManifestGenerator:
                 output_file = output_dir / f"{file_path.stem}_manifest.json"
                 metadata = self._generate_metadata(file_path, metadata_template)
 
+                registry, file_url = self._create_registry(str(file_path))
                 manifest_store, errors = self._parse_with_error_collection(
-                    str(file_path), None
+                    file_url, registry
                 )
 
                 if errors:
@@ -148,18 +321,20 @@ class ManifestGenerator:
 
         return manifests
 
-    def _create_registry(self, url: str) -> ObjectStoreRegistry:
-        """Create appropriate registry based on URL scheme."""
+    def _create_registry(self, url: str) -> Tuple[ObjectStoreRegistry, str]:
         if url.startswith(("http://", "https://")):
             base_url = self.base_url or self._extract_base_url(url)
             store = AiohttpStore(base_url)
-            return ObjectStoreRegistry({base_url: store})
-        return None
+            return ObjectStoreRegistry({base_url: store}), url
+        p = Path(url).resolve()
+        base_path = str(p.parent)
+        file_url = f"file://{p}"
+        return ObjectStoreRegistry({"file://": FileStore(base_path)}), file_url
 
     def _parse_with_error_collection(
         self,
         path: str,
-        registry: Optional[ObjectStoreRegistry],
+        registry: ObjectStoreRegistry,
     ) -> Tuple[vzm.ManifestStore, List[Tuple[str, str]]]:
         """Parse file and collect exceptions for each variable."""
         errors: List[Tuple[str, str]] = []
