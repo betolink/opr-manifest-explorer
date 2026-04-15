@@ -24,6 +24,8 @@ dependencies = [
     "dask-labextension>=7.0.0",
     "voila>=0.5",
     "voila-material>=0.4",
+    "h5py>=3.16.0",
+    "pandas>=3.0.2",
 ]
 
 [dependency-groups]
