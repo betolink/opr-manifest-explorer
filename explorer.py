@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Dict, Optional, Tuple, Sequence
 from collections.abc import AsyncIterator, Iterator
 from urllib.request import urlretrieve
+import requests
 
 import h5py
 import json
@@ -242,7 +243,10 @@ def create_app():
         width=100,
         description="Scan the file for HDF5 groups and list them in the table below.",
     )
-    status = pn.pane.Markdown("Enter a local path or remote URL, then click **Load**.")
+    status = pn.pane.Markdown(
+        "Enter a local path or remote URL, then click **Load**.<br>"
+        "Note: Remote files are downloaded to a temp directory before scanning."
+    )
     progress = pn.widgets.Progress(
         active=False, bar_color="primary", sizing_mode="stretch_width"
     )
@@ -296,7 +300,11 @@ def create_app():
                 suffix = Path(url_str.split("/")[-1].split("?")[0]).suffix or ".h5"
                 tmp = Path(_tmpdir) / f"downloaded{suffix}"
                 status.object = f"Downloading from `{url_str[:60]}...`"
-                urlretrieve(url_str, tmp)
+                response = requests.get(url_str, timeout=30, stream=True)
+                response.raise_for_status()
+                with open(tmp, "wb") as f:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        f.write(chunk)
                 current_file[0] = str(tmp)
                 status.object = "Scanning..."
             else:
