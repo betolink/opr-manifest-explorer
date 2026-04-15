@@ -247,6 +247,10 @@ def create_app():
         "Enter a local path or remote URL, then click **Load**.<br>"
         "Note: Remote files are downloaded to a temp directory before scanning."
     )
+    status_css = pn.pane.HTML(
+        "<style>.bk-status { padding: 10px; margin: 10px 0; }</style>",
+        sizing_mode="stretch_width",
+    )
     progress = pn.widgets.Progress(
         active=False, bar_color="primary", sizing_mode="stretch_width"
     )
@@ -299,12 +303,30 @@ def create_app():
             elif url_str:
                 suffix = Path(url_str.split("/")[-1].split("?")[0]).suffix or ".h5"
                 tmp = Path(_tmpdir) / f"downloaded{suffix}"
-                status.object = f"Downloading from `{url_str[:60]}...`"
-                response = requests.get(url_str, timeout=30, stream=True)
-                response.raise_for_status()
-                with open(tmp, "wb") as f:
-                    for chunk in response.iter_content(chunk_size=8192):
-                        f.write(chunk)
+                status.object = "Connecting to remote..."
+                try:
+                    import requests
+
+                    with requests.get(url_str, timeout=300, stream=True) as response:
+                        response.raise_for_status()
+                        total_size = int(response.headers.get("content-length", 0))
+                        downloaded = 0
+                        with open(tmp, "wb") as f:
+                            for chunk in response.iter_content(chunk_size=1024 * 1024):
+                                if chunk:
+                                    f.write(chunk)
+                                    downloaded += len(chunk)
+                                    if total_size > 0:
+                                        percent = int(100 * downloaded / total_size)
+                                        status.object = f"Downloading: {percent}%"
+                except ImportError:
+                    from urllib.request import urlretrieve
+
+                    urlretrieve(url_str, tmp)
+                except Exception as e:
+                    status.object = f"Error: {str(e)}"
+                    progress.active = False
+                    return
                 current_file[0] = str(tmp)
                 status.object = "Scanning..."
             else:

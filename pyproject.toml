@@ -26,6 +26,7 @@ dependencies = [
     "voila-material>=0.4",
     "h5py>=3.16.0",
     "pandas>=3.0.2",
+    "requests>=2.32.0",
 ]
 
 [dependency-groups]
