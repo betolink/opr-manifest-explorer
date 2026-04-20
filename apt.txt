@@ -1,0 +1,4 @@
+libhdf5-dev
+libjpeg-dev
+zlib1g-dev
+git

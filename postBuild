@@ -1,0 +1,13 @@
+#!/bin/bash
+set -euo pipefail
+
+jupyter server extension enable voila --sys-prefix
+jupyter server extension enable jupyter_server_proxy --sys-prefix
+
+echo "Testing Python imports..."
+python -c "
+import panel, virtualizarr, h5py, holoviews, bokeh, voila
+print('All core imports successful')
+"
+
+echo "Environment setup complete"

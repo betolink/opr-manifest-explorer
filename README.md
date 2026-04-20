@@ -6,37 +6,21 @@ This dashboard displays the internal structure of HDF5 files without downloading
 
 ## Quick Start - Try in Browser
 
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/betolink/opr-manifest-explorer/voila-widget?urlpath=voila%2Frender%2Fexplorer.ipynb)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/betolink/opr-manifest-explorer/HEAD?urlpath=panel%2Fexplorer)
 
-## Features
+Click the Binder badge above to launch the Panel app directly.
 
-- **Interactive Workflow**: Upload files or use URLs, browse groups, visualize chunks in one place
-- **Variables Overview**: Browse all variables with their shapes, chunk sizes, and storage info
-- **ByteMap**: Visualize how chunks are laid out in the source file(s)
-- **ChunkMap**: See the chunk grid structure for selected variables
-- **Summary Statistics**: File-level and manifest-level metrics
+### Testing Binder Locally
 
-## Local Development
+You can test the Binder configuration locally using [repo2docker](https://repo2docker.readthedocs.io/):
 
 ```bash
-# Install dependencies
-uv sync
-
-# Run the Voila web app (auto-generates manifests from any HDF5 file)
-uv run voila explorer.ipynb
-
-# Or run the standalone Panel app with a specific manifest
-uv run python app.py path/to/manifest.json
-
-# Or via panel serve with an env var
-MANIFEST_PATH=path/to/manifest.json uv run panel serve app.py --show
-
-# Or via URL query param
-uv run panel serve app.py --show
-# then open http://localhost:5006/app?manifest=path/to/manifest.json
+uv run jupyter-repo2docker .
 ```
 
-If no manifest is specified, falls back to `data/xopr_manifest.json`.
+Copy the URL with token from the terminal, then navigate to:
+- **Panel App**: append `/panel/explorer` to the URL (e.g. `http://127.0.0.1:8888/panel/explorer?token=...`)
+- **Voila App**: append `/voila/render/explorer.ipynb` to the URL
 
 ## Generating Manifests
 

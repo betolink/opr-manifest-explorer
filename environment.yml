@@ -1,0 +1,31 @@
+name: opr-manifest-explorer
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pip
+  - virtualizarr
+  - panel>=1.0
+  - holoviews>=1.18
+  - bokeh>=3.0
+  - colorcet
+  - ujson
+  - aiohttp
+  - earthaccess>=0.17.0
+  - matplotlib>=3.10
+  - hvplot>=0.12
+  - fsspec>=2026.3.0
+  - jupyterlab>=4.5
+  - jupyter-server-proxy
+  - dask>=2026.3.0
+  - dask-labextension>=7.0.0
+  - voila
+  - h5py>=3.16.0
+  - pandas>=2.0,<3.0
+  - requests>=2.32.0
+  - pyhdf>=0.11.6
+  - kerchunk>=0.2.10
+  - pip:
+    - vzviz @ git+https://github.com/virtual-zarr/vzviz
+    - obspec-utils @ git+https://github.com/developmentseed/obspec-utils
+    - voila-material
